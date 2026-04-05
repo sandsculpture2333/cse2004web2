@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scene Trap</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <h1 class="site-title">Scene Trap</h1>
+        <p class="site-tagline">Assemble your scenario. Step into the scene.</p>
+        <button class="btn-help" id="btn-help" type="button" aria-expanded="false" aria-controls="help-panel" title="How to play">?</button>
+      </div>
+      <div class="help-panel hidden" id="help-panel" aria-live="polite">
+        <div class="help-panel-inner">
+
+          <div class="help-section">
+            <span class="help-section-title">What is Scene Trap?</span>
+            <p>Scene Trap is a two-player improv dialogue game. You and another person play two characters trapped in a dramatic situation. The AI sets the scene — you act it out by taking turns writing what your character says.</p>
+            <p>There are no right answers. The goal is to stay in character, follow the rules, and push the scene forward.</p>
+          </div>
+
+          <div class="help-section">
+            <span class="help-section-title">Before you start</span>
+            <p>Sit with another person. One of you is <strong>Player A</strong>, the other is <strong>Player B</strong>. You'll share the screen and take turns typing — like passing a script back and forth.</p>
+          </div>
+
+          <div class="help-section">
+            <span class="help-section-title">Step 1 — Build your scene</span>
+            <p>Use the three dropdowns to pick a <strong>World</strong> (the setting), a <strong>Relationship</strong> (who these two characters are to each other), and a <strong>Scene type</strong> (what kind of situation they're in). Then click <strong>Enter the Scene</strong>.</p>
+            <p>The AI will generate:</p>
+            <ul>
+              <li><strong>Scene setup</strong> — the backstory and why these two must face each other right now</li>
+              <li><strong>Shared goal</strong> — a specific thing that must happen before the scene can end (e.g. "one of them must apologise")</li>
+              <li><strong>Expression constraint</strong> — a rule about how you must speak (e.g. "every line must start with 'I never'")</li>
+            </ul>
+            <p>Read all three carefully before you begin.</p>
+          </div>
+
+          <div class="help-section">
+            <span class="help-section-title">Step 2 — Play the scene</span>
+            <p>Select who you are using the <strong>Player A / Player B</strong> toggle. Type what your character says and click <strong>Speak</strong> (or press Enter). Then the other player does the same.</p>
+            <p>A few rules:</p>
+            <ul>
+              <li>Stay in character — speak as the character, not as yourself</li>
+              <li>Follow the expression constraint at all times</li>
+              <li>You can say anything your character would plausibly say — argue, deflect, confess, accuse</li>
+              <li>There is no fixed number of turns. Keep going until the shared goal has been reached</li>
+            </ul>
+          </div>
+
+          <div class="help-section">
+            <span class="help-section-title">Step 3 — Use the tools</span>
+            <ul>
+              <li><strong>Trigger Chaos</strong> — inject a surprise event that shifts the balance. Use it when the scene feels stuck or too comfortable. Both players must incorporate it.</li>
+              <li><strong>Claim Completion</strong> — press this when you think the shared goal has been achieved. Both players must agree for the scene to end. If only one claims it, the scene continues.</li>
+              <li><strong>Report Violation</strong> — if a player broke the expression constraint or spoke out of character, flag it. You can retract their last line as a penalty.</li>
+              <li><strong>Use Voice</strong> — speak your line into the microphone instead of typing. The transcript will fill in automatically.</li>
+            </ul>
+          </div>
+
+          <div class="help-section">
+            <span class="help-section-title">How does it end?</span>
+            <p>The scene ends when both players click <strong>Claim Completion</strong> and both agree. This should only happen once the shared goal has genuinely been triggered through dialogue — not just mentioned or wished for, but actually played out.</p>
+          </div>
+
+          <div class="help-section">
+            <span class="help-section-title">Tips for first-timers</span>
+            <ul>
+              <li>Read the scene setup out loud together before you begin — it helps both players get into character</li>
+              <li>The constraint is a challenge, not a suggestion. Breaking it on purpose is cheating</li>
+              <li>Don't rush to end the scene. The best moments happen when you stay in the tension longer</li>
+              <li>Chaos events are meant to be disruptive — don't ignore them, react to them</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+
+      <!-- Setup Panel -->
+      <section class="card setup-panel" aria-labelledby="setup-heading" data-label="FIELD NOTES">
+        <h2 id="setup-heading" class="card-heading">Build Your Scene</h2>
+        <p class="card-description">
+          Choose a world, a relationship, and a situation.
+          The scene engine will generate the rest.
+        </p>
+
+        <div class="dropdowns-grid">
+          <div class="dropdown-group">
+            <label class="dropdown-label" for="select-world">World</label>
+            <select class="dropdown" id="select-world" aria-label="Choose a world setting">
+              <!-- populated by app.js -->
+            </select>
+          </div>
+
+          <div class="dropdown-group">
+            <label class="dropdown-label" for="select-relationship">Relationship</label>
+            <select class="dropdown" id="select-relationship" aria-label="Choose a relationship">
+              <!-- populated by app.js -->
+            </select>
+          </div>
+
+          <div class="dropdown-group">
+            <label class="dropdown-label" for="select-scene">Scene</label>
+            <select class="dropdown" id="select-scene" aria-label="Choose a scene type">
+              <!-- populated by app.js -->
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btn-generate" type="button">
+          Enter the Scene
+        </button>
+      </section>
+
+      <!-- Status / Error Message -->
+      <div
+        class="status-message hidden"
+        id="status-message"
+        role="alert"
+        aria-live="assertive"
+      ></div>
+
+      <!-- Scene Card (hidden until generated) -->
+      <section
+        class="card scene-card hidden"
+        id="scene-card"
+        aria-labelledby="scene-heading"
+        data-label="SCENE FILE"
+      >
+        <div class="scene-card-header">
+          <h2 id="scene-heading" class="card-heading">Your Scene</h2>
+          <span class="scene-badge" id="scene-badge">Act I</span>
+        </div>
+
+        <div class="scene-meta" id="scene-meta">
+          <!-- world · relationship · scene · constraint pills go here -->
+        </div>
+
+        <div class="scene-body" id="scene-body" aria-live="polite">
+          <!-- generated scene text goes here -->
+        </div>
+
+        <!-- Shared goal and expression constraint — generated alongside the scene -->
+        <div class="scene-layer hidden" id="scene-goal-block">
+          <span class="scene-layer-label">Shared Goal</span>
+          <p class="scene-layer-text" id="scene-goal-text"></p>
+        </div>
+        <div class="scene-layer hidden" id="scene-constraint-block">
+          <span class="scene-layer-label">Expression Constraint</span>
+          <p class="scene-layer-text" id="scene-constraint-text"></p>
+        </div>
+
+        <div class="scene-actions">
+          <button class="btn btn-secondary hidden" id="btn-read" type="button" aria-hidden="true">
+            Read Scene Aloud
+          </button>
+          <button class="btn btn-danger" id="btn-chaos" type="button">
+            Trigger Chaos
+          </button>
+        </div>
+      </section>
+
+      <!-- Chaos Event Display (fallback when Notifications are denied) -->
+      <div
+        class="chaos-display hidden"
+        id="chaos-display"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span class="chaos-label">CHAOS EVENT</span>
+        <p class="chaos-text" id="chaos-text"></p>
+      </div>
+
+      <!-- Dialogue Panel -->
+      <section class="card dialogue-panel" aria-labelledby="dialogue-heading" data-label="TRANSCRIPT">
+        <h2 id="dialogue-heading" class="card-heading">Scene Dialogue</h2>
+        <p class="card-description">
+          Take turns writing lines. Keep it in character.
+        </p>
+
+        <!-- Speaker Toggle -->
+        <div class="speaker-toggle" role="group" aria-label="Current speaker">
+          <span class="speaker-toggle-label">Speaking as</span>
+          <div class="speaker-options">
+            <label class="speaker-option">
+              <input type="radio" name="speaker" value="A" checked />
+              <span class="speaker-btn" data-speaker="A">Player A</span>
+            </label>
+            <label class="speaker-option">
+              <input type="radio" name="speaker" value="B" />
+              <span class="speaker-btn" data-speaker="B">Player B</span>
+            </label>
+          </div>
+        </div>
+
+        <div
+          class="dialogue-log"
+          id="dialogue-log"
+          aria-live="polite"
+          aria-label="Dialogue log"
+        >
+          <p class="dialogue-placeholder">
+            Generate a scene above to begin.
+          </p>
+        </div>
+
+        <div class="speaker-indicator" id="speaker-indicator" data-speaker="A">— Player A —</div>
+
+        <div class="chat-input-row">
+          <input
+            class="dialogue-input"
+            id="dialogue-input"
+            type="text"
+            placeholder="What do you say next?"
+            aria-label="Your dialogue line"
+            maxlength="300"
+            autocomplete="off"
+          />
+          <button
+            class="btn btn-voice btn-mic-icon"
+            id="btn-mic"
+            type="button"
+            title="Fill input with spoken text"
+            aria-label="Use voice input"
+          >
+            <svg width="11" height="14" viewBox="0 0 11 14" fill="none" aria-hidden="true">
+              <rect x="3" y="0.5" width="5" height="8" rx="2.5" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M1 7.5a4.5 4.5 0 0 0 9 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              <line x1="5.5" y1="12" x2="5.5" y2="13.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="btn btn-speak-primary" id="btn-add-line" type="button">
+            Speak
+          </button>
+        </div>
+
+        <div class="button-row-meta">
+          <button
+            class="btn btn-secondary btn-claim-completion"
+            id="btn-claim"
+            type="button"
+            title="Use when both players believe the shared goal has been achieved"
+          >
+            Claim Completion
+          </button>
+          <button
+            class="btn btn-secondary btn-report"
+            id="btn-report"
+            type="button"
+            title="Report a rule violation during the scene"
+          >
+            Report Violation
+          </button>
+        </div>
+
+        <!-- Scene complete banner — shown after both players accept -->
+        <div class="scene-complete-banner hidden" id="scene-complete-banner" aria-live="polite">
+          <span class="complete-eyebrow">SCENE CONCLUDED</span>
+          <p class="complete-message">Both players have agreed. The scene is complete.</p>
+        </div>
+      </section>
+
+      <!-- Completion modal -->
+      <div class="modal-overlay hidden" id="completion-modal" role="dialog" aria-modal="true" aria-labelledby="modal-heading">
+        <div class="modal-card">
+          <p class="modal-eyebrow">CLAIM COMPLETION</p>
+          <h3 id="modal-heading" class="modal-heading">Shared Goal Completed?</h3>
+          <p class="modal-body">Do you think the shared goal has been completed?</p>
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="btn-modal-accept" type="button">Accept</button>
+            <button class="btn btn-secondary" id="btn-modal-reject" type="button">Reject</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Report Violation modal -->
+      <div class="modal-overlay hidden" id="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-heading">
+        <div class="modal-card">
+          <!-- Step 1: select report type -->
+          <div id="report-step-1">
+            <p class="modal-eyebrow">REPORT</p>
+            <h3 id="report-modal-heading" class="modal-heading">What are you reporting?</h3>
+            <div class="report-options">
+              <button class="btn btn-report-option" id="btn-report-constraint" type="button">
+                Speaking constraint broken
+              </button>
+              <button class="btn btn-report-option" id="btn-report-goal" type="button">
+                Shared goal triggered
+              </button>
+              <button class="btn btn-report-option" id="btn-report-other" type="button">
+                Other
+              </button>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-secondary" id="btn-report-cancel" type="button">Cancel</button>
+            </div>
+          </div>
+          <!-- Step 2: retract confirmation -->
+          <div id="report-step-2" class="hidden">
+            <p class="modal-eyebrow">RETRACT</p>
+            <h3 class="modal-heading">Remove the last line?</h3>
+            <p class="modal-body" id="report-retract-preview"></p>
+            <div class="modal-actions">
+              <button class="btn btn-primary" id="btn-retract-confirm" type="button">Remove it</button>
+              <button class="btn btn-secondary" id="btn-retract-cancel" type="button">Leave it</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <footer class="site-footer">
+      <p>Scene Trap &mdash; an AI-assisted improv roleplay tool</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
