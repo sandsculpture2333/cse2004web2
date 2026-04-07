@@ -321,8 +321,7 @@ async function handleGenerateScene() {
 }
 
 function handleReadScene() {
-  // TODO (Stage 4): use SpeechSynthesis API here.
-  showStatus("Read Scene not yet implemented.");
+  // Button is hidden in UI — SpeechSynthesis is used via speakLine() on each dialogue line instead.
 }
 
 async function handleTriggerChaos() {
