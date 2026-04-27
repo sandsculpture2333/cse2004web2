@@ -545,11 +545,34 @@ body::after {
   margin-bottom: 0.6rem;
 }
 
-.chaos-text {
+.chaos-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chaos-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.chaos-entry-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-chaos-label);
+  opacity: 0.75;
+}
+
+.chaos-entry-text {
   font-family: var(--font-display);
   font-style: italic;
   font-size: 1rem;
-  line-height: 1.75;
+  line-height: 1.65;
   color: var(--color-chaos-ink);
 }
 
@@ -955,6 +978,160 @@ body::after {
   letter-spacing: 0.1em;
 }
 
+/* --- Lobby Panel --- */
+.lobby-panel {
+  text-align: center;
+}
+
+.lobby-field {
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.lobby-input {
+  width: 100%;
+  background-color: var(--color-paper-worn);
+  border: 1px solid var(--color-paper-edge);
+  border-bottom: 2px solid var(--color-paper-edge);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  padding: 0.6rem 0.85rem;
+  box-shadow: var(--shadow-inset);
+  transition: border-color 0.15s ease;
+}
+
+.lobby-input::placeholder {
+  color: var(--color-ink-faint);
+  font-style: italic;
+}
+
+.lobby-input:focus {
+  outline: none;
+  border-color: var(--color-brown);
+  box-shadow: 0 0 0 2px rgba(47, 62, 52, 0.12), var(--shadow-inset);
+}
+
+.lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lobby-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.lobby-divider::before,
+.lobby-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-paper-edge);
+}
+
+.lobby-join-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.lobby-code-input {
+  flex: 1;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.btn-text-link {
+  background: none;
+  border: none;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-style: italic;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  transition: color 0.15s ease;
+}
+
+.btn-text-link:hover {
+  color: var(--color-ink);
+}
+
+/* --- Room Info Bar --- */
+.room-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(20, 16, 10, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 1rem;
+  color: var(--color-paper);
+}
+
+.room-info-inner {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.room-info-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.room-info-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-paper-edge);
+}
+
+.room-info-value {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-paper);
+}
+
+.room-info-code {
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+}
+
+.btn-leave {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  color: var(--color-paper-edge);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-leave:hover {
+  border-color: var(--color-paper);
+  color: var(--color-paper);
+}
+
 /* --- Utility --- */
 .hidden {
   display: none;
@@ -977,5 +1154,14 @@ body::after {
   .button-row-meta {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .room-info-inner {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .lobby-join-row {
+    flex-direction: column;
   }
 }

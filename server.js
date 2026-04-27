@@ -2,10 +2,13 @@
 //  Scene Trap — server.js
 // ===========================
 
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" }); // Vercel pulls env vars here
+dotenv.config();                        // fallback to .env
 import express from "express";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { createRoom, getRoom, updateRoom, endRoom } from "./api/room-store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -86,6 +89,82 @@ app.post("/api/chaos", async (req, res) => {
   } catch (error) {
     console.error("Chaos generation error:", error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ===========================
+//  Room routes — backed by Upstash Redis via api/room-store.js
+// ===========================
+
+app.post("/api/create-room", async (req, res) => {
+  const { playerId, playerName } = req.body || {};
+  if (!playerId || !playerName) {
+    return res.status(400).json({ error: "Missing playerId or playerName" });
+  }
+  try {
+    const room = await createRoom({ playerId, playerName });
+    res.json({ roomId: room.roomId, playerRole: "A", room });
+  } catch (err) {
+    console.error("[create-room]", err.message);
+    res.status(500).json({ error: "Failed to create room" });
+  }
+});
+
+app.post("/api/join-room", async (req, res) => {
+  const { roomId, playerId, playerName } = req.body || {};
+  if (!roomId || !playerId || !playerName) {
+    return res.status(400).json({ error: "Missing roomId, playerId, or playerName" });
+  }
+  try {
+    const room = await getRoom(roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+
+    if (room.players.A?.id === playerId) {
+      return res.json({ roomId: room.roomId, playerRole: "A", room });
+    }
+    if (room.players.B?.id === playerId) {
+      return res.json({ roomId: room.roomId, playerRole: "B", room });
+    }
+    if (!room.players.B) {
+      const updated = await updateRoom(roomId, (r) => ({
+        ...r,
+        players: { ...r.players, B: { id: playerId, name: playerName } },
+        status: "ready",
+      }));
+      return res.json({ roomId: updated.roomId, playerRole: "B", room: updated });
+    }
+    return res.status(400).json({ error: "Room is full" });
+  } catch (err) {
+    console.error("[join-room]", err.message);
+    res.status(500).json({ error: "Failed to join room" });
+  }
+});
+
+app.get("/api/get-room", async (req, res) => {
+  const { roomId } = req.query;
+  if (!roomId) return res.status(400).json({ error: "Missing roomId" });
+  try {
+    const room = await getRoom(roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+    res.json({ room });
+  } catch (err) {
+    console.error("[get-room]", err.message);
+    res.status(500).json({ error: "Failed to get room" });
+  }
+});
+
+app.post("/api/end-room", async (req, res) => {
+  const { roomId, playerId } = req.body || {};
+  if (!roomId || !playerId) {
+    return res.status(400).json({ error: "Missing roomId or playerId" });
+  }
+  try {
+    const room = await endRoom(roomId, playerId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+    res.json({ room });
+  } catch (err) {
+    console.error("[end-room]", err.message);
+    res.status(500).json({ error: "Failed to end room" });
   }
 });
 

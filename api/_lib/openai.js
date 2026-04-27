@@ -109,33 +109,31 @@ The constraint must restrict HOW players speak, not what happens. Keep it simple
 `.trim();
 }
 
-export function buildChaosPrompt({ sceneText }) {
+export function buildChaosPrompt({ sceneText, sharedGoal, speakingConstraint, recentLines, previousChaosEvents }) {
+  const lineBlock = recentLines && recentLines.length > 0
+    ? `\nRecent dialogue:\n${recentLines.map((l) => `${l.playerRole}: ${l.text}`).join("\n")}`
+    : "";
+
+  const chaosBlock = previousChaosEvents && previousChaosEvents.length > 0
+    ? `\nPrevious chaos:\n${previousChaosEvents.map((e, i) => `${i + 1}. ${e.text}`).join("\n")}`
+    : "";
+
   return `
-You are generating a turning point in a dialogue game.
+You are generating an escalating turning point in a dialogue game.
 
-Current scene:
-${sceneText}
+Scene: ${sceneText}
+Goal: ${sharedGoal || "unresolved conflict"}
+Constraint: ${speakingConstraint || "none"}${lineBlock}${chaosBlock}
 
-Your goal is to CHANGE THE BALANCE between the two players.
-
-Requirements:
-- 1 sentence only
+Rules:
+- Exactly 1 sentence, max 30 words
 - No dialogue
-- Must introduce new information, pressure, or consequence
+- Must shift emotional, moral, or strategic balance
+- If previous chaos exists, escalate or reveal a consequence — do not contradict it
+- Do not resolve the conflict
 
-Prefer:
-- revealing a hidden fact
-- shifting who is at fault
-- introducing urgency
-- changing power balance
+Prefer revealing hidden facts, shifting fault, introducing urgency, or changing power balance.
 
-Avoid:
-- random events
-- purely environmental changes
-- resolving the conflict
-
-The result should force players to rethink their strategy.
-
-Write a turning point.
+Write the turning point.
 `.trim();
 }

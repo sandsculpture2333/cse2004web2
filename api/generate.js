@@ -2,6 +2,12 @@
 //  POST /api/generate
 //  Vercel serverless function.
 //  OPENAI_API_KEY must be set in Vercel Environment Variables.
+//
+//  Supports two modes:
+//  - Local/solo: body = { world, relationship, scene }
+//  - Room mode:  body = { world, relationship, scene, roomId, playerId }
+//    In room mode the generated content is saved into the shared room
+//    state so the second player sees it on their next poll.
 // ===========================
 
 import {
@@ -11,16 +17,26 @@ import {
   buildSharedGoalPrompt,
   buildConstraintPrompt,
 } from "./_lib/openai.js";
+import { getRoom, updateRoom } from "./room-store.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { world, relationship, scene } = req.body;
+  const { world, relationship, scene, roomId, playerId } = req.body;
 
   if (!world || !relationship || !scene) {
     return res.status(400).json({ error: "Missing one or more required fields." });
+  }
+
+  // --- Room mode: validate host before spending AI tokens ---
+  if (roomId) {
+    const room = await getRoom(roomId);
+    if (!room) return res.status(404).json({ error: "Room not found" });
+    if (room.players.A?.id !== playerId) {
+      return res.status(403).json({ error: "Only the host can generate the scene." });
+    }
   }
 
   try {
@@ -54,14 +70,32 @@ export default async function handler(req, res) {
       throw new Error(`Speaking constraint generation failed: ${constraintResult.reason.message}`);
     }
 
-    res.json({
-      sceneText,
-      sharedGoal: sharedGoalResult.value,
-      constraint: constraintResult.value,
-    });
+    const sharedGoal = sharedGoalResult.value;
+    const constraint = constraintResult.value;
+
+    // --- Room mode: persist to shared state ---
+    if (roomId) {
+      const updatedRoom = await updateRoom(roomId, (r) => ({
+        ...r,
+        sceneText,
+        sharedGoal,
+        speakingConstraint: constraint,
+        world,
+        relationship,
+        scene,
+        status: "playing",
+        dialogueLines: [],
+        chaosEvents: [],
+        currentTurn: "A",
+      }));
+      return res.json({ sceneText, sharedGoal, constraint, room: updatedRoom });
+    }
+
+    // --- Solo/local mode ---
+    return res.json({ sceneText, sharedGoal, constraint });
 
   } catch (error) {
     console.error("Scene generation error:", error.message);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }

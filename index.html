@@ -85,8 +85,53 @@
 
     <main class="main-content">
 
+      <!-- Lobby Panel -->
+      <section class="card lobby-panel" id="lobby-panel" aria-labelledby="lobby-heading" data-label="LOBBY">
+        <h2 id="lobby-heading" class="card-heading">Enter the Stage</h2>
+        <p class="card-description">
+          Enter your name and create or join a room to play remotely.
+        </p>
+
+        <div class="lobby-field">
+          <label class="dropdown-label" for="input-player-name">Display Name</label>
+          <input class="lobby-input" id="input-player-name" type="text" placeholder="Your name" maxlength="20" autocomplete="off" />
+        </div>
+
+        <div class="lobby-actions">
+          <button class="btn btn-primary" id="btn-create-room" type="button">Create Room</button>
+          <div class="lobby-divider"><span>or join an existing room</span></div>
+          <div class="lobby-join-row">
+            <input class="lobby-input lobby-code-input" id="input-room-code" type="text" placeholder="CODE" maxlength="4" autocomplete="off" />
+            <button class="btn btn-secondary" id="btn-join-room" type="button">Join Room</button>
+          </div>
+        </div>
+
+        <button class="btn-text-link" id="btn-play-local" type="button">
+          or play locally (pass &amp; play)
+        </button>
+      </section>
+
+      <!-- Room Info Bar -->
+      <div class="room-info-bar hidden" id="room-info-bar" aria-live="polite">
+        <div class="room-info-inner">
+          <span class="room-info-item">
+            <span class="room-info-label">Room</span>
+            <span class="room-info-value room-info-code" id="room-info-code"></span>
+          </span>
+          <span class="room-info-item">
+            <span class="room-info-label">Playing as</span>
+            <span class="room-info-value" id="room-info-role"></span>
+          </span>
+          <span class="room-info-item">
+            <span class="room-info-label">Name</span>
+            <span class="room-info-value" id="room-info-name"></span>
+          </span>
+        </div>
+        <button class="btn-leave" id="btn-leave-room" type="button" title="Leave room">Leave</button>
+      </div>
+
       <!-- Setup Panel -->
-      <section class="card setup-panel" aria-labelledby="setup-heading" data-label="FIELD NOTES">
+      <section class="card setup-panel" id="setup-panel" aria-labelledby="setup-heading" data-label="FIELD NOTES">
         <h2 id="setup-heading" class="card-heading">Build Your Scene</h2>
         <p class="card-description">
           Choose a world, a relationship, and a situation.
@@ -169,19 +214,18 @@
         </div>
       </section>
 
-      <!-- Chaos Event Display (fallback when Notifications are denied) -->
+      <!-- Chaos Event Display -->
       <div
         class="chaos-display hidden"
         id="chaos-display"
         aria-live="polite"
-        aria-atomic="true"
       >
-        <span class="chaos-label">CHAOS EVENT</span>
-        <p class="chaos-text" id="chaos-text"></p>
+        <span class="chaos-label">CHAOS EVENTS</span>
+        <ol class="chaos-list" id="chaos-list"></ol>
       </div>
 
       <!-- Dialogue Panel -->
-      <section class="card dialogue-panel" aria-labelledby="dialogue-heading" data-label="TRANSCRIPT">
+      <section class="card dialogue-panel" id="dialogue-panel" aria-labelledby="dialogue-heading" data-label="TRANSCRIPT">
         <h2 id="dialogue-heading" class="card-heading">Scene Dialogue</h2>
         <p class="card-description">
           Take turns writing lines. Keep it in character.
@@ -278,6 +322,18 @@
           <div class="modal-actions">
             <button class="btn btn-primary" id="btn-modal-accept" type="button">Accept</button>
             <button class="btn btn-secondary" id="btn-modal-reject" type="button">Reject</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Room Ended modal -->
+      <div class="modal-overlay hidden" id="room-ended-modal" role="dialog" aria-modal="true" aria-labelledby="room-ended-heading">
+        <div class="modal-card">
+          <p class="modal-eyebrow">ROOM ENDED</p>
+          <h3 id="room-ended-heading" class="modal-heading">The scene has closed.</h3>
+          <p class="modal-body">This room is no longer active. Return to the main menu to start a new scene.</p>
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="btn-return-to-menu" type="button">Return to Main Menu</button>
           </div>
         </div>
       </div>
