@@ -28,7 +28,7 @@ async function generateChaos(room, retryShort = false) {
     previousChaosEvents: prevChaos,
   });
 
-  return callOpenAI(prompt, retryShort ? 250 : 350);
+  return callOpenAI(prompt, 1500);
 }
 
 export default async function handler(req, res) {
@@ -52,20 +52,23 @@ export default async function handler(req, res) {
     const events  = room.chaosEvents   || [];
     const lines   = room.dialogueLines || [];
 
-    // Eligibility checks
+    // Eligibility checks (fast path before spending AI tokens)
     if (events.length >= MAX_CHAOS_EVENTS) {
-      return res.status(400).json({ error: "Maximum chaos events reached for this round." });
+      return res.status(400).json({ error: "Maximum chaos events reached." });
     }
-    if (events.length === 0) {
-      if (lines.length < LINES_BETWEEN) {
-        return res.status(400).json({ error: "Chaos is not ready yet. Let the scene develop first." });
-      }
-    } else {
-      const lastChaos = events[events.length - 1];
-      if (lines.length - lastChaos.lineCountAtTrigger < LINES_BETWEEN) {
-        return res.status(400).json({ error: "Chaos is not ready yet. Let the scene develop first." });
-      }
+    const linesSince = events.length === 0
+      ? lines.length
+      : lines.length - events[events.length - 1].lineCountAtTrigger;
+    if (linesSince < LINES_BETWEEN) {
+      const needed = LINES_BETWEEN - linesSince;
+      const word = needed === 1 ? "line" : "lines";
+      return res.status(400).json({
+        error: `Chaos unlocks every 10 lines. Next chaos in ${needed} more ${word}.`,
+      });
     }
+
+    // Remember the event count before generation so the updater can detect a concurrent trigger
+    const initialEventsCount = events.length;
 
     try {
       let text;
@@ -87,10 +90,20 @@ export default async function handler(req, res) {
         lineCountAtTrigger: lines.length,
       };
 
-      const updatedRoom = await updateRoom(roomId, (r) => ({
-        ...r,
-        chaosEvents: [...(r.chaosEvents || []), event],
-      }));
+      // Re-validate inside the updater against the freshest room state to prevent
+      // a concurrent request from appending a duplicate while this one was generating.
+      const updatedRoom = await updateRoom(roomId, (r) => {
+        const fresh = r.chaosEvents || [];
+        if (fresh.length > initialEventsCount) return r; // someone else already appended
+        if (fresh.length >= MAX_CHAOS_EVENTS)  return r; // hit cap concurrently
+        return { ...r, chaosEvents: [...fresh, event] };
+      });
+
+      if (!updatedRoom || updatedRoom.chaosEvents.length <= initialEventsCount) {
+        return res.status(409).json({
+          error: "Chaos was already triggered. Wait for 10 more dialogue lines.",
+        });
+      }
 
       return res.json({ text, room: updatedRoom });
     } catch (error) {
@@ -103,7 +116,7 @@ export default async function handler(req, res) {
   try {
     const text = await callOpenAI(
       buildChaosPrompt({ sceneText, sharedGoal: "", speakingConstraint: constraint }),
-      350
+      1500
     );
     res.json({ text });
   } catch (error) {

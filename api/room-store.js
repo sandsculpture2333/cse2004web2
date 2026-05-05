@@ -65,5 +65,6 @@ export async function endRoom(roomId, playerId) {
     status: "ended",
     endedAt: Date.now(),
     endedBy: playerId,
+    completionReason: "Room ended because a player left.",
   }));
 }

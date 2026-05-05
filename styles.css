@@ -51,7 +51,7 @@
   --radius-lg: 6px;
 
   /* Shadows — warm, no color */
-  --shadow-paper: 0 4px 24px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0, 0, 0, 0.35);
+  --shadow-paper: 0 4px 32px rgba(0, 0, 0, 0.68), 0 1px 6px rgba(0, 0, 0, 0.42);
   --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.12);
 
   --max-width: 760px;
@@ -83,21 +83,18 @@ body::before {
   background-image: url("woodDesk.jpg");
   background-size: cover;
   background-position: center;
-  filter: blur(6px) brightness(0.65) contrast(0.85) saturate(0.6);
+  filter: blur(6px) brightness(0.72) contrast(0.85) saturate(0.6);
   /* slight scale prevents blur from leaving transparent edges */
   transform: scale(1.04);
 }
 
-/* Layer 2 — paper grain texture, tiled subtly on top */
+/* Layer 2 — warm dark overlay so paper cards lift off the background */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
-  background-image: url("paperTexture.jpg");
-  background-repeat: repeat;
-  background-size: 340px;
-  opacity: 0.07;
+  background-color: rgba(14, 8, 2, 0.13);
 }
 
 /* --- Header --- */
@@ -275,10 +272,62 @@ body::after {
   line-height: 1.55;
 }
 
+/* --- Card info toggle (collapsible helper per card) --- */
+.card-header {
+  margin-bottom: 1.5rem;
+}
+
+.card-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+}
+
+/* Small circular "i" icon on card headers */
+.btn-card-info {
+  flex-shrink: 0;
+  align-self: center;
+  background: none;
+  border: 1px solid var(--color-ink-faint);
+  border-radius: 50%;
+  width: 1.1rem;
+  height: 1.1rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-style: italic;
+  font-weight: 700;
+  color: var(--color-ink-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-left: 0.5rem;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-card-info:hover,
+.btn-card-info[aria-expanded="true"] {
+  color: var(--color-ink);
+  border-color: var(--color-ink-mid);
+}
+
+/* Collapsible helper text that sits inside the card below the header */
+.card-info-panel {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-style: italic;
+  color: var(--color-ink-mid);
+  line-height: 1.55;
+  padding-top: 0.4rem;
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--color-paper-edge);
+}
+
 /* --- Dropdowns Grid --- */
 .dropdowns-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 1.1rem;
   margin-bottom: 1.75rem;
 }
@@ -424,12 +473,26 @@ body::after {
 
 /* --- Scene Card --- */
 .scene-card-header {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--color-paper-edge);
+}
+
+.scene-card-header-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--color-paper-edge);
+}
+
+.scene-card-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.scene-card-header .card-info-panel {
+  border-top: none;
+  margin-top: 0.4rem;
 }
 
 .scene-badge {
@@ -940,32 +1003,6 @@ body::after {
   gap: 0.75rem;
 }
 
-/* Report option buttons — full-width, stack vertically */
-.report-options {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1.25rem;
-}
-
-.btn-report-option {
-  background-color: transparent;
-  border: 1px solid var(--color-paper-edge);
-  border-radius: var(--radius-md);
-  color: var(--color-ink);
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  padding: 0.55rem 0.85rem;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.btn-report-option:hover {
-  background-color: var(--color-paper-worn);
-  border-color: var(--color-ink-mid);
-}
-
 /* --- Footer --- */
 .site-footer {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
@@ -1068,16 +1105,91 @@ body::after {
   color: var(--color-ink);
 }
 
+/* --- Lobby quick guide --- */
+.lobby-guide {
+  margin-top: 0.25rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--color-paper-edge);
+}
+
+/* "QUICK WALKTHROUGH" eyebrow — small label, stays decorative */
+.lobby-guide-title {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-mid);
+  margin-bottom: 0.7rem;
+}
+
+.lobby-guide-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Each step stacks label above description */
+.lobby-guide-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* Step name — compact mono label, high contrast */
+.guide-step-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: 0.02em;
+}
+
+/* Step body — readable size, normal weight, high contrast */
+.guide-step-desc {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  font-weight: 400;
+  color: var(--color-ink);
+  line-height: 1.6;
+}
+
+.lobby-guide-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.7rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-paper-edge);
+}
+
+.btn-guide-dismiss {
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-ink-mid);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.btn-guide-dismiss:hover {
+  color: var(--color-ink);
+}
+
 /* --- Room Info Bar --- */
 .room-info-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: rgba(20, 16, 10, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background-color: rgba(20, 16, 10, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: var(--radius-md);
   padding: 0.6rem 1rem;
   color: var(--color-paper);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
 }
 
 .room-info-inner {
@@ -1132,9 +1244,222 @@ body::after {
   color: var(--color-paper);
 }
 
+/* --- Room Status Strip — sits below the room bar --- */
+.room-status-strip {
+  text-align: center;
+  padding: 0.4rem 1rem;
+  margin-top: -1rem;        /* close the visual gap with the bar above */
+  font-family: var(--font-mono);
+  font-size: 0.71rem;
+  font-style: italic;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(20, 14, 8, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+/* --- Role assignment radio (shown in room mode only) --- */
+.role-assignment-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.role-assignment-options {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.role-option-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-ink-mid);
+  cursor: pointer;
+}
+
+.role-option-label input[type="radio"] {
+  accent-color: var(--color-brown);
+}
+
+/* --- Role chooser panel (host-chooses mode, inside scene card) --- */
+.role-chooser {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--color-paper-worn);
+  border: 1px solid var(--color-paper-edge);
+  border-radius: var(--radius-md);
+}
+
+.role-chooser-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-mid);
+  margin-bottom: 0.6rem;
+}
+
+.role-chooser-options {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.btn-role-option {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.35rem 1rem;
+  border: 1px solid var(--color-paper-edge);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.btn-role-option:hover {
+  border-color: var(--color-brown-light);
+  background: var(--color-paper-worn);
+}
+
+/* Scene role in room bar */
+.room-info-scene-role {
+  font-style: italic;
+}
+
 /* --- Utility --- */
 .hidden {
   display: none;
+}
+
+/* --- App Toast — top-right, used for all transient feedback --- */
+.app-toast {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 900;
+  max-width: 320px;
+  padding: 0.7rem 1rem;
+  background-color: var(--color-bg-deep);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 3px solid var(--color-ink-mid);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--color-paper);
+  opacity: 0;
+  transform: translateY(-0.4rem);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.app-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.app-toast.is-error {
+  border-left-color: var(--color-chaos-border);
+}
+
+.app-toast.is-success {
+  border-left-color: var(--color-brown-light);
+}
+
+/* --- Chaos Action Group --- */
+.chaos-action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.chaos-availability {
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  color: var(--color-ink-faint);
+  font-style: italic;
+  line-height: 1.4;
+  min-height: 1em;
+}
+
+/* --- Custom Scenario Inputs --- */
+.custom-scenario-section {
+  margin-bottom: 1.75rem;
+}
+
+.custom-scenario-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  color: var(--color-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.custom-scenario-divider::before,
+.custom-scenario-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-paper-edge);
+}
+
+.custom-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.1rem;
+  margin-bottom: 0.6rem;
+}
+
+.custom-input {
+  width: 100%;
+  background-color: var(--color-paper-worn);
+  border: 1px solid var(--color-paper-edge);
+  border-bottom: 2px solid var(--color-paper-edge);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.55rem 0.75rem;
+  box-shadow: var(--shadow-inset);
+  transition: border-color 0.15s ease;
+}
+
+.custom-input::placeholder {
+  color: var(--color-ink-faint);
+  font-style: italic;
+}
+
+.custom-input:hover {
+  border-color: var(--color-ink-mid);
+}
+
+.custom-input:focus {
+  outline: none;
+  border-color: var(--color-brown);
+  box-shadow: 0 0 0 2px rgba(47, 62, 52, 0.15), var(--shadow-inset);
+}
+
+.custom-hint {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--color-ink-faint);
+  font-style: italic;
 }
 
 /* --- Responsive --- */
@@ -1143,7 +1468,8 @@ body::after {
     font-size: 2rem;
   }
 
-  .dropdowns-grid {
+  .dropdowns-grid,
+  .custom-fields-grid {
     grid-template-columns: 1fr;
   }
 

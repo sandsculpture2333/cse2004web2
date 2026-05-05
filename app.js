@@ -43,6 +43,10 @@ const selectWorld        = document.getElementById("select-world");
 const selectRelationship = document.getElementById("select-relationship");
 const selectScene        = document.getElementById("select-scene");
 
+const inputCustomWorld        = document.getElementById("input-custom-world");
+const inputCustomRelationship = document.getElementById("input-custom-relationship");
+const inputCustomSituation    = document.getElementById("input-custom-situation");
+
 const btnGenerate  = document.getElementById("btn-generate");
 const btnRead      = document.getElementById("btn-read");
 const btnChaos     = document.getElementById("btn-chaos");
@@ -51,14 +55,18 @@ const btnAddLine   = document.getElementById("btn-add-line");
 const sceneCard    = document.getElementById("scene-card");
 const sceneMeta    = document.getElementById("scene-meta");
 const sceneBody    = document.getElementById("scene-body");
-const sceneGoalBlock      = document.getElementById("scene-goal-block");
-const sceneGoalText       = document.getElementById("scene-goal-text");
+const sceneGoalBlock       = document.getElementById("scene-goal-block");
+const sceneGoalText        = document.getElementById("scene-goal-text");
 const sceneConstraintBlock = document.getElementById("scene-constraint-block");
 const sceneConstraintText  = document.getElementById("scene-constraint-text");
+const sceneTriggerBlock    = document.getElementById("scene-trigger-block");
+const sceneTriggerText     = document.getElementById("scene-trigger-text");
 
-const chaosDisplay = document.getElementById("chaos-display");
-const chaosList    = document.getElementById("chaos-list");
-const chaosSound   = new Audio("chaos.mp3");
+const chaosDisplay      = document.getElementById("chaos-display");
+const chaosList         = document.getElementById("chaos-list");
+const chaosAvailability = document.getElementById("chaos-availability");
+const appToast          = document.getElementById("app-toast");
+const chaosSound        = new Audio("chaos.mp3");
 
 const dialogueLog   = document.getElementById("dialogue-log");
 const dialogueInput = document.getElementById("dialogue-input");
@@ -68,15 +76,10 @@ const statusMessage = document.getElementById("status-message");
 const speakerIndicator   = document.getElementById("speaker-indicator");
 const btnMic             = document.getElementById("btn-mic");
 const btnClaim           = document.getElementById("btn-claim");
+const btnEndManual       = document.getElementById("btn-end-manual");
 const btnReport          = document.getElementById("btn-report");
 const reportModal        = document.getElementById("report-modal");
-const reportStep1        = document.getElementById("report-step-1");
-const reportStep2        = document.getElementById("report-step-2");
-const reportRetractPreview = document.getElementById("report-retract-preview");
-const btnReportCancel    = document.getElementById("btn-report-cancel");
-const btnReportConstraint = document.getElementById("btn-report-constraint");
-const btnReportGoal      = document.getElementById("btn-report-goal");
-const btnReportOther     = document.getElementById("btn-report-other");
+const retractLinePreview = document.getElementById("retract-line-preview");
 const btnRetractConfirm  = document.getElementById("btn-retract-confirm");
 const btnRetractCancel   = document.getElementById("btn-retract-cancel");
 const roomEndedModal     = document.getElementById("room-ended-modal");
@@ -88,39 +91,112 @@ const btnHelp            = document.getElementById("btn-help");
 const helpPanel          = document.getElementById("help-panel");
 
 // Lobby / Room
+const roomStatusStrip  = document.getElementById("room-status-strip");
+const roomStatusText   = document.getElementById("room-status-text");
 const lobbyPanel       = document.getElementById("lobby-panel");
 const inputPlayerName  = document.getElementById("input-player-name");
 const btnCreateRoom    = document.getElementById("btn-create-room");
 const inputRoomCode    = document.getElementById("input-room-code");
 const btnJoinRoom      = document.getElementById("btn-join-room");
-const btnPlayLocal     = document.getElementById("btn-play-local");
-const roomInfoBar      = document.getElementById("room-info-bar");
-const roomInfoCode     = document.getElementById("room-info-code");
-const roomInfoRole     = document.getElementById("room-info-role");
-const roomInfoName     = document.getElementById("room-info-name");
-const btnLeaveRoom     = document.getElementById("btn-leave-room");
-const setupPanel       = document.getElementById("setup-panel");
-const dialoguePanel    = document.getElementById("dialogue-panel");
-const speakerToggle    = document.querySelector(".speaker-toggle");
+const btnLobbyGuide    = document.getElementById("btn-lobby-guide");
+const lobbyGuide       = document.getElementById("lobby-guide");
+const btnGuideDismiss  = document.getElementById("btn-guide-dismiss");
+const btnInfoSetup     = document.getElementById("btn-info-setup");
+const infoSetup        = document.getElementById("info-setup");
+const btnInfoScene     = document.getElementById("btn-info-scene");
+const infoScene        = document.getElementById("info-scene");
+const btnInfoDialogue  = document.getElementById("btn-info-dialogue");
+const infoDialogue     = document.getElementById("info-dialogue");
+const roomInfoBar           = document.getElementById("room-info-bar");
+const roomInfoCode          = document.getElementById("room-info-code");
+const roomInfoRole          = document.getElementById("room-info-role");
+const roomInfoSceneRoleItem = document.getElementById("room-info-scene-role-item");
+const roomInfoSceneRole     = document.getElementById("room-info-scene-role");
+const roomInfoName          = document.getElementById("room-info-name");
+const btnLeaveRoom          = document.getElementById("btn-leave-room");
+const setupPanel            = document.getElementById("setup-panel");
+const dialoguePanel         = document.getElementById("dialogue-panel");
+const speakerToggle         = document.querySelector(".speaker-toggle");
+const roleAssignmentGroup   = document.getElementById("role-assignment-group");
+const roleChooser           = document.getElementById("role-chooser");
+const roleChooserOptions    = document.getElementById("role-chooser-options");
 
 // --- State ---
 
 let currentScene = "";
 let currentSharedGoal = "";
 let currentSpeakingConstraint = "";
+let currentTriggerDefinition = "";
 let currentSelections = null;
 let dialogueLines = []; // each entry: { speaker: "A" | "B", text: string }
 let localChaosEvents = []; // local-mode chaos chain: array of text strings
 let claimedBy = new Set(); // tracks which players ("A", "B") have confirmed completion
+let isChaosLoading = false; // guard against rapid duplicate requests
+let chaosToastTimer = null;
 
 // --- Room State ---
+
+const CHAOS_MAX_EVENTS = 5;
+const CHAOS_LINES_GAP  = 10;
 
 let roomState = {
   playerId: null,
   playerName: null,
   roomId: null,
-  playerRole: null, // "A" or "B", null when playing locally
+  playerRole: null,       // "A" or "B", null when playing locally
+  cachedChaosEvents: [],  // kept in sync by polling for defensive availability checks
 };
+
+let playerNames = { A: null, B: null }; // populated from room data; used for display labels
+
+function getDisplayName(role) {
+  return playerNames[role] || `Player ${role}`;
+}
+
+function getRoleAssignmentMode() {
+  const checked = document.querySelector('input[name="role-assignment"]:checked');
+  return checked ? checked.value : "random";
+}
+
+function applySceneRoles(sceneRoles) {
+  if (!roomState.playerRole || !sceneRoles) return;
+  const myRole = sceneRoles[roomState.playerRole];
+  if (!myRole) return;
+  roomInfoSceneRole.textContent = myRole;
+  roomInfoSceneRoleItem.classList.remove("hidden");
+}
+
+function showRoleChooser(roleOptions) {
+  roleChooserOptions.innerHTML = "";
+  roleOptions.forEach((label, i) => {
+    const btn = document.createElement("button");
+    btn.className = "btn-role-option";
+    btn.textContent = label;
+    btn.addEventListener("click", () => handleAssignRole(i === 0));
+    roleChooserOptions.appendChild(btn);
+  });
+  roleChooser.classList.remove("hidden");
+}
+
+async function handleAssignRole(hostTakesFirst) {
+  roleChooser.classList.add("hidden");
+  try {
+    const res = await fetch("/api/assign-roles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: roomState.roomId, playerId: roomState.playerId, hostTakesFirst }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Assignment failed");
+    }
+    const data = await res.json();
+    applySceneRoles(data.sceneRoles);
+  } catch (e) {
+    showToast("Could not assign roles. Try again.", true);
+    roleChooser.classList.remove("hidden");
+  }
+}
 
 let pollInterval = null;
 let lastKnownRoomStatus = null;
@@ -172,14 +248,11 @@ function attachEventListeners() {
   document.querySelectorAll('input[name="speaker"]').forEach((radio) => {
     radio.addEventListener("change", updateSpeakerIndicator);
   });
-  btnClaim.addEventListener("click", handleClaimCompletion);
-  btnReport.addEventListener("click", handleReportViolation);
-  btnReportCancel.addEventListener("click", closeReportModal);
-  btnReportConstraint.addEventListener("click", () => showRetractStep("Speaking constraint broken"));
-  btnReportGoal.addEventListener("click", () => showRetractStep("Shared goal triggered"));
-  btnReportOther.addEventListener("click", () => showRetractStep("Other"));
-  btnRetractConfirm.addEventListener("click", confirmRetract);
-  btnRetractCancel.addEventListener("click", closeReportModal);
+  btnClaim.addEventListener("click", handleCheckEnding);
+  btnEndManual.addEventListener("click", handleEndManual);
+  btnReport.addEventListener("click", handleRetractLine);
+  btnRetractConfirm.addEventListener("click", confirmRetractLine);
+  btnRetractCancel.addEventListener("click", closeRetractModal);
   btnHelp.addEventListener("click", toggleHelp);
   initMicButton();
   btnModalAccept.addEventListener("click", handleAcceptCompletion);
@@ -189,7 +262,20 @@ function attachEventListeners() {
   // Lobby
   btnCreateRoom.addEventListener("click", handleCreateRoom);
   btnJoinRoom.addEventListener("click", handleJoinRoom);
-  btnPlayLocal.addEventListener("click", handlePlayLocal);
+  // Auto-expand on first visit or when ?tutorial=1 is in the URL (useful for testing)
+  const forceTutorial = new URLSearchParams(location.search).has("tutorial");
+  if (forceTutorial || !localStorage.getItem("sceneTrapTutorialSeen")) openGuide();
+  btnLobbyGuide.addEventListener("click", () => {
+    if (lobbyGuide.classList.contains("hidden")) {
+      openGuide();
+    } else {
+      closeGuide();
+    }
+  });
+  btnGuideDismiss.addEventListener("click", closeGuide);
+  btnInfoSetup.addEventListener("click",    () => toggleCardInfo(btnInfoSetup,    infoSetup));
+  btnInfoScene.addEventListener("click",    () => toggleCardInfo(btnInfoScene,    infoScene));
+  btnInfoDialogue.addEventListener("click", () => toggleCardInfo(btnInfoDialogue, infoDialogue));
   btnLeaveRoom.addEventListener("click", handleLeaveRoom);
   inputRoomCode.addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleJoinRoom();
@@ -201,11 +287,15 @@ function attachEventListeners() {
 
 // --- Helpers ---
 
-function getSelections() {
+function getScenarioInputs() {
+  const trim = (s) => (s || "").trim().slice(0, 160);
+  const customWorld        = trim(inputCustomWorld.value);
+  const customRelationship = trim(inputCustomRelationship.value);
+  const customSituation    = trim(inputCustomSituation.value);
   return {
-    world:        selectWorld.value,
-    relationship: selectRelationship.value,
-    scene:        selectScene.value,
+    world:        customWorld        || selectWorld.value        || "a tense private room",
+    relationship: customRelationship || selectRelationship.value || "two people with unresolved history",
+    scene:        customSituation    || selectScene.value        || "a confrontation after a past decision changed both of their lives",
   };
 }
 
@@ -218,6 +308,27 @@ function showStatus(message, isError = false) {
 function clearStatus() {
   statusMessage.classList.add("hidden");
   statusMessage.textContent = "";
+}
+
+function showToast(message, type = "info") {
+  const resolved = type === true ? "error" : type; // backward-compat with old boolean callers
+  clearTimeout(chaosToastTimer);
+  appToast.textContent = message;
+  appToast.classList.remove("is-error", "is-success");
+  if (resolved === "error")   appToast.classList.add("is-error");
+  if (resolved === "success") appToast.classList.add("is-success");
+  appToast.classList.add("is-visible");
+  chaosToastTimer = setTimeout(() => appToast.classList.remove("is-visible"), 4000);
+}
+
+function showRoomStatus(message) {
+  if (message) {
+    roomStatusText.textContent = message;
+    roomStatusStrip.classList.remove("hidden");
+  } else {
+    roomStatusStrip.classList.add("hidden");
+    roomStatusText.textContent = "";
+  }
 }
 
 function showSceneCard() {
@@ -262,7 +373,7 @@ function appendDialogueLine(entry) {
 
   const speaker = document.createElement("span");
   speaker.className = "dialogue-speaker";
-  speaker.textContent = `Player ${entry.speaker}`;
+  speaker.textContent = getDisplayName(entry.speaker);
 
   const textEl = document.createElement("p");
   textEl.className = "dialogue-text";
@@ -301,7 +412,7 @@ function renderDialogueLog() {
 
     const speaker = document.createElement("span");
     speaker.className = "dialogue-speaker";
-    speaker.textContent = `Player ${entry.speaker}`;
+    speaker.textContent = getDisplayName(entry.speaker);
 
     const text = document.createElement("p");
     text.className = "dialogue-text";
@@ -317,7 +428,7 @@ function renderDialogueLog() {
 // --- Handlers ---
 
 async function handleGenerateScene() {
-  const selections = getSelections();
+  const selections = getScenarioInputs();
   clearStatus();
   renderSceneMeta(selections);
   showSceneCard();
@@ -325,6 +436,7 @@ async function handleGenerateScene() {
   // Reset scene layers and completion UI from any previous generation
   sceneGoalBlock.classList.add("hidden");
   sceneConstraintBlock.classList.add("hidden");
+  sceneTriggerBlock.classList.add("hidden");
   claimedBy = new Set();
   sceneCompleteBanner.classList.add("hidden");
   if (!roomState.roomId) {
@@ -332,6 +444,7 @@ async function handleGenerateScene() {
     btnAddLine.disabled = false;
   }
   btnClaim.disabled = false;
+  btnEndManual.disabled = false;
 
   // Show a loading state while the API call is in flight
   sceneBody.textContent = "Setting the scene…";
@@ -340,7 +453,7 @@ async function handleGenerateScene() {
 
   // In room mode, send credentials so the backend can save the result
   const body = roomState.roomId
-    ? { ...selections, roomId: roomState.roomId, playerId: roomState.playerId }
+    ? { ...selections, roomId: roomState.roomId, playerId: roomState.playerId, assignmentMode: getRoleAssignmentMode() }
     : selections;
 
   try {
@@ -357,10 +470,31 @@ async function handleGenerateScene() {
     currentScene = data.sceneText;
     currentSharedGoal = data.sharedGoal;
     currentSpeakingConstraint = data.constraint;
+    currentTriggerDefinition = data.triggerDefinition || "";
     currentSelections = selections;
 
-    // Prevent the next poll from re-rendering this scene for the host
-    if (roomState.roomId) lastKnownSceneText = data.sceneText;
+    // Prevent the next poll from re-rendering this scene for the host.
+    // Also clear chaos state here — the host bypasses applyRoomScene which normally does this.
+    if (roomState.roomId) {
+      lastKnownSceneText = data.sceneText;
+      lastKnownDialogueLength = 0;
+      dialogueLines = [];
+      localChaosEvents = [];
+      chaosList.innerHTML = "";
+      chaosDisplay.classList.add("hidden");
+      lastSeenChaosId = null;
+      roomState.cachedChaosEvents = [];
+      chaosAvailability.textContent = "";
+      // Enable input immediately for the host (Player A goes first) without waiting for the next poll
+      if (data.room) updateTurnControls(data.room.currentTurn);
+
+      // Apply or prompt for role assignment
+      if (data.roleAssignmentPending && roomState.playerRole === "A") {
+        showRoleChooser(data.roleOptions);
+      } else if (data.sceneRoles) {
+        applySceneRoles(data.sceneRoles);
+      }
+    }
 
     sceneBody.classList.remove("is-loading");
     typewriteText(sceneBody, currentScene, 12);
@@ -371,32 +505,86 @@ async function handleGenerateScene() {
     sceneConstraintBlock.classList.remove("hidden");
     typewriteText(sceneConstraintText, data.constraint, 15);
 
+    if (currentTriggerDefinition) {
+      sceneTriggerBlock.classList.remove("hidden");
+      typewriteText(sceneTriggerText, currentTriggerDefinition, 15);
+    }
+
+    dialogueLines = [];
+    renderDialogueLog();
+
   } catch (error) {
     sceneBody.classList.remove("is-loading");
     sceneBody.textContent = "";
-    showStatus(`Could not generate scene: ${error.message}`, true);
+    showToast(`Could not generate scene: ${error.message}`, true);
   } finally {
     btnGenerate.disabled = false;
   }
-
-  dialogueLines = [];
-  renderDialogueLog();
 }
 
 function handleReadScene() {
   // Button is hidden in UI — SpeechSynthesis is used via speakLine() on each dialogue line instead.
 }
 
+// Returns chaos availability based on event history and current line count.
+// Pure — takes the two inputs explicitly so it's usable from any context.
+function getChaosAvailability(events, lineCount) {
+  if (events.length >= CHAOS_MAX_EVENTS) {
+    return { canTrigger: false, linesUntilReady: 0, reason: "Maximum chaos events reached." };
+  }
+  const linesSince = events.length === 0
+    ? lineCount
+    : lineCount - events[events.length - 1].lineCountAtTrigger;
+  if (linesSince < CHAOS_LINES_GAP) {
+    const needed = CHAOS_LINES_GAP - linesSince;
+    const word = needed === 1 ? "line" : "lines";
+    return {
+      canTrigger: false,
+      linesUntilReady: needed,
+      reason: `Chaos unlocks every 10 lines. Next chaos in ${needed} more ${word}.`,
+    };
+  }
+  return { canTrigger: true, linesUntilReady: 0, reason: "Chaos is ready." };
+}
+
+// Updates the Trigger Chaos button and hint text from room state.
+// Pass null to re-evaluate from cached chaos events (used in finally blocks).
+// No-op in local mode — chaos is always available there.
+function updateChaosButtonState(room) {
+  if (!roomState.roomId) return;
+  if (room) {
+    roomState.cachedChaosEvents = room.chaosEvents || [];
+  }
+  const lineCount = room ? (room.dialogueLines?.length ?? dialogueLines.length) : dialogueLines.length;
+  const { canTrigger, reason } = getChaosAvailability(roomState.cachedChaosEvents, lineCount);
+  if (!isChaosLoading) btnChaos.disabled = !canTrigger;
+  chaosAvailability.textContent = reason;
+}
+
 async function handleTriggerChaos() {
+  // Guard against rapid duplicate clicks
+  if (isChaosLoading) return;
+
+  // Defensive availability check — button should already be disabled in room mode
+  if (roomState.roomId) {
+    const { canTrigger, reason } = getChaosAvailability(
+      roomState.cachedChaosEvents,
+      dialogueLines.length
+    );
+    if (!canTrigger) {
+      showToast(reason, true);
+      return;
+    }
+  }
+
+  isChaosLoading = true;
   btnChaos.disabled = true;
+  chaosAvailability.textContent = "Triggering chaos…";
 
   try {
     const body = roomState.roomId
       ? { roomId: roomState.roomId, playerId: roomState.playerId }
-      : {
-          sceneText: currentScene,
-          constraint: currentSpeakingConstraint,
-        };
+      : { sceneText: currentScene, constraint: currentSpeakingConstraint };
 
     const response = await fetch("/api/chaos", {
       method: "POST",
@@ -407,27 +595,39 @@ async function handleTriggerChaos() {
     const data = await response.json();
 
     if (!response.ok) {
-      // Pacing / eligibility errors are friendly messages, not crashes
-      showStatus(data.error || response.statusText, true);
+      showToast(data.error || "Chaos generation failed. Please try again.", true);
+      if (roomState.roomId) {
+        // Show rejection reason in the hint; button stays disabled until next poll re-evaluates
+        chaosAvailability.textContent = data.error || "";
+      }
       return;
     }
 
     if (roomState.roomId && data.room) {
-      // Mark the new event as seen so polling doesn't re-play the sound for us
       const events = data.room.chaosEvents;
       if (events && events.length > 0) {
         lastSeenChaosId = events[events.length - 1].id;
       }
       renderChaosFromRoom(data.room.chaosEvents, true);
+      updateChaosButtonState(data.room); // updates cachedChaosEvents with new event
     } else {
       localChaosEvents.push(data.text);
       renderLocalChaos(true);
     }
 
   } catch (error) {
-    showStatus(`Could not generate chaos event: ${error.message}`, true);
+    showToast("Chaos generation failed. Please try again.", true);
+    if (roomState.roomId) chaosAvailability.textContent = "";
   } finally {
-    btnChaos.disabled = false;
+    isChaosLoading = false;
+    if (roomState.roomId) {
+      // Room mode: button stays disabled until the next poll re-evaluates availability
+      // from fresh server state. This ensures both players stay in sync — if another
+      // player already triggered chaos, we don't accidentally re-enable with stale cache.
+    } else {
+      btnChaos.disabled = false;
+      chaosAvailability.textContent = "";
+    }
   }
 }
 
@@ -529,7 +729,7 @@ async function handleAddLine() {
 
       if (!res.ok) {
         const err = await res.json();
-        showStatus(err.error || "Could not send line.", true);
+        showToast(err.error || "Could not send line.", true);
         // Re-enable if it's still this player's turn (e.g. non-fatal error)
         updateTurnControls(roomState.currentTurnCache ?? roomState.playerRole);
         return;
@@ -544,7 +744,7 @@ async function handleAddLine() {
       updateTurnControls(data.room.currentTurn);
 
     } catch (e) {
-      showStatus("Could not send line.", true);
+      showToast("Could not send line.", true);
     }
 
   } else {
@@ -562,9 +762,9 @@ async function handleAddLine() {
 function syncDialogueFromRoom(room) {
   if (!room.dialogueLines) return;
   lastKnownDialogueLength = room.dialogueLines.length;
-  // Map server format → local format that renderDialogueLog understands
   dialogueLines = room.dialogueLines.map((l) => ({ speaker: l.playerRole, text: l.text }));
   renderDialogueLog();
+  updateChaosButtonState(room);
 }
 
 // Enables/disables the speak controls and updates the turn indicator.
@@ -580,7 +780,7 @@ function updateTurnControls(currentTurn) {
     speakerIndicator.textContent = "— Your turn —";
     speakerIndicator.dataset.speaker = roomState.playerRole;
   } else {
-    speakerIndicator.textContent = "— Waiting for Player " + currentTurn + " —";
+    speakerIndicator.textContent = "— " + getDisplayName(currentTurn) + "'s turn —";
     speakerIndicator.dataset.speaker = currentTurn;
   }
 }
@@ -613,7 +813,7 @@ function initMicButton() {
   recognition.addEventListener("error", (event) => {
     btnMic.classList.remove("is-listening");
     if (event.error === "not-allowed") {
-      showStatus("Microphone permission denied. Enable it in browser settings.", true);
+      showToast("Microphone permission denied. Enable it in browser settings.", true);
     }
   });
 
@@ -625,75 +825,155 @@ function initMicButton() {
 
 // --- Completion Flow ---
 
-function handleClaimCompletion() {
-  const speaker = getCurrentSpeaker();
-  if (claimedBy.has(speaker)) {
-    showStatus("You have already claimed completion. Waiting for the other player.");
+async function handleCheckEnding() {
+  if (!roomState.roomId) {
+    showToast("AI ending check is available in room mode only.", true);
     return;
   }
+
+  btnClaim.disabled = true;
+  btnClaim.textContent = "Checking ending…";
+
+  try {
+    const res = await fetch("/api/check-ending", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: roomState.roomId, playerId: roomState.playerId }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(data.error || "Ending check failed.", true);
+      return;
+    }
+
+    if (data.completed) {
+      showSceneEndedBanner("Scene complete: " + data.reason);
+    } else {
+      showToast("Not complete yet: " + data.reason);
+    }
+
+  } catch (e) {
+    showToast("Ending check failed. Please try again.", true);
+  } finally {
+    if (sceneCompleteBanner.classList.contains("hidden")) {
+      btnClaim.disabled = false;
+      btnClaim.textContent = "Check Ending";
+    }
+  }
+}
+
+function handleEndManual() {
   completionModal.classList.remove("hidden");
   btnModalAccept.focus();
 }
 
-function handleAcceptCompletion() {
+async function handleAcceptCompletion() {
   completionModal.classList.add("hidden");
-  claimedBy.add(getCurrentSpeaker());
 
-  if (claimedBy.size >= 2) {
-    // Both players confirmed — scene is over
-    sceneCompleteBanner.classList.remove("hidden");
-    sceneCompleteBanner.querySelector(".complete-eyebrow").textContent = "SCENE CONCLUDED";
-    sceneCompleteBanner.querySelector(".complete-message").textContent =
-      "Both players have agreed. The scene is complete.";
-    dialogueInput.disabled = true;
-    btnAddLine.disabled = true;
-    btnClaim.disabled = true;
+  if (roomState.roomId) {
+    try {
+      const abort = new AbortController();
+      const timeout = setTimeout(() => abort.abort(), 4000);
+      await fetch("/api/end-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: roomState.roomId, playerId: roomState.playerId }),
+        signal: abort.signal,
+      });
+      clearTimeout(timeout);
+    } catch (e) {
+      // proceed regardless — ended state still rendered locally
+    }
+    // Show the same ended state the other player sees via polling,
+    // so both clients render the same UI immediately.
+    showRoomEndedState();
   } else {
-    // First player confirmed — waiting for the second
-    sceneCompleteBanner.classList.remove("hidden");
-    sceneCompleteBanner.querySelector(".complete-eyebrow").textContent = "WAITING";
-    sceneCompleteBanner.querySelector(".complete-message").textContent =
-      "Waiting for the other player to confirm…";
+    // Local/solo mode: just show the inline banner.
+    showSceneEndedBanner("The scene has been manually ended.");
   }
 }
 
 function handleRejectCompletion() {
   completionModal.classList.add("hidden");
-  btnClaim.focus();
+  btnEndManual.focus();
 }
 
-// --- Report Flow ---
+function showSceneEndedBanner(message) {
+  stopPolling();
+  lastKnownRoomStatus = "ended"; // prevent polling callback from re-firing
 
-function handleReportViolation() {
-  reportStep1.classList.remove("hidden");
-  reportStep2.classList.add("hidden");
-  reportModal.classList.remove("hidden");
+  // Clear transient status indicators (mirrors showRoomEndedState for consistency)
+  showRoomStatus("");
+  speakerIndicator.textContent = "";
+  chaosAvailability.textContent = "";
+
+  sceneCompleteBanner.classList.remove("hidden");
+  sceneCompleteBanner.querySelector(".complete-eyebrow").textContent = "SCENE CONCLUDED";
+  sceneCompleteBanner.querySelector(".complete-message").textContent = message;
+
+  dialogueInput.disabled = true;
+  btnAddLine.disabled = true;
+  btnClaim.disabled = true;
+  btnEndManual.disabled = true;
+  btnChaos.disabled = true;
+  btnGenerate.disabled = true;
+  // Leave button remains enabled so players can exit when ready
+
+  // In room mode show the return modal so both players have a clear exit path.
+  // (Local mode uses the inline banner only — no room to leave.)
+  if (roomState.roomId) {
+    roomEndedModal.querySelector(".modal-eyebrow").textContent = "SCENE COMPLETE";
+    roomEndedModal.querySelector(".modal-heading").textContent = "This scene has ended.";
+    roomEndedModal.classList.remove("hidden");
+  }
 }
 
-function showRetractStep(type) {
+// --- Retract Flow ---
+
+function handleRetractLine() {
   const last = dialogueLines[dialogueLines.length - 1];
   if (!last) {
-    closeReportModal();
-    showStatus(`Report noted: ${type}. No lines to retract.`);
+    showToast("No lines to retract.", true);
     return;
   }
-  reportRetractPreview.textContent = `Player ${last.speaker}: "${last.text}"`;
-  reportStep1.classList.add("hidden");
-  reportStep2.classList.remove("hidden");
+  retractLinePreview.textContent = `${getDisplayName(last.speaker)}: "${last.text}"`;
+  reportModal.classList.remove("hidden");
+  btnRetractConfirm.focus();
 }
 
-function confirmRetract() {
-  closeReportModal();
-  if (dialogueLines.length === 0) return;
-  dialogueLines.pop();
-  renderDialogueLog();
-  showStatus("Last line retracted.");
-}
-
-function closeReportModal() {
+async function confirmRetractLine() {
   reportModal.classList.add("hidden");
-  reportStep1.classList.remove("hidden");
-  reportStep2.classList.add("hidden");
+
+  if (roomState.roomId) {
+    try {
+      const res = await fetch("/api/retract-line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: roomState.roomId, playerId: roomState.playerId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Retract failed.", true);
+        return;
+      }
+      syncDialogueFromRoom(data.room);
+      updateTurnControls(data.room.currentTurn);
+      showToast("Last line retracted.", "success");
+    } catch (e) {
+      showToast("Retract failed. Please try again.", true);
+    }
+  } else {
+    if (dialogueLines.length === 0) return;
+    dialogueLines.pop();
+    renderDialogueLog();
+    showToast("Last line retracted.");
+  }
+}
+
+function closeRetractModal() {
+  reportModal.classList.add("hidden");
 }
 
 // --- Help Panel ---
@@ -733,10 +1013,34 @@ function getOrCreatePlayerId() {
 
 // --- Mode Switching ---
 
+function toggleCardInfo(btn, panel) {
+  // Close all sibling panels so only one is open at a time
+  [[btnInfoSetup, infoSetup], [btnInfoScene, infoScene], [btnInfoDialogue, infoDialogue]]
+    .forEach(([b, p]) => {
+      if (b !== btn) { p.classList.add("hidden"); b.setAttribute("aria-expanded", "false"); }
+    });
+  const isNowHidden = panel.classList.toggle("hidden");
+  btn.setAttribute("aria-expanded", String(!isNowHidden));
+}
+
+function openGuide() {
+  lobbyGuide.classList.remove("hidden");
+  btnLobbyGuide.textContent = "Hide walkthrough ▴";
+  btnLobbyGuide.setAttribute("aria-expanded", "true");
+}
+
+function closeGuide() {
+  lobbyGuide.classList.add("hidden");
+  btnLobbyGuide.textContent = "New here? View quick walkthrough ▾";
+  btnLobbyGuide.setAttribute("aria-expanded", "false");
+  localStorage.setItem("sceneTrapTutorialSeen", "true");
+}
+
 function enterLobbyMode() {
   stopPolling();
   lobbyPanel.classList.remove("hidden");
   roomInfoBar.classList.add("hidden");
+  roomStatusStrip.classList.add("hidden");
   setupPanel.classList.add("hidden");
   dialoguePanel.classList.add("hidden");
   speakerToggle.classList.remove("hidden");
@@ -752,6 +1056,7 @@ function enterGameMode(isRoom) {
     roomInfoBar.classList.remove("hidden");
     roomInfoCode.textContent = roomState.roomId;
     roomInfoRole.textContent = "Player " + roomState.playerRole;
+    roleAssignmentGroup.classList.remove("hidden");
     roomInfoName.textContent = roomState.playerName;
     btnLeaveRoom.textContent = "Leave Room";
     btnLeaveRoom.disabled = false;
@@ -777,7 +1082,7 @@ function enterGameMode(isRoom) {
     if (radio) radio.checked = true;
     speakerToggle.classList.add("hidden");
 
-    showStatus("Connecting to room...");
+    showRoomStatus("Connecting to room…");
     lastKnownRoomStatus = null;
     startPolling();
   } else {
@@ -794,12 +1099,11 @@ function enterGameMode(isRoom) {
 async function handleCreateRoom() {
   const name = inputPlayerName.value.trim();
   if (!name) {
-    showStatus("Please enter a display name.", true);
+    showToast("Please enter a display name.", true);
     return;
   }
 
   btnCreateRoom.disabled = true;
-  clearStatus();
 
   try {
     const playerId = getOrCreatePlayerId();
@@ -821,11 +1125,12 @@ async function handleCreateRoom() {
       playerName: name,
       roomId: data.roomId,
       playerRole: data.playerRole,
+      cachedChaosEvents: [],
     };
     saveSession();
     enterGameMode(true);
   } catch (error) {
-    showStatus("Could not create room: " + error.message, true);
+    showToast("Could not create room: " + error.message, true);
   } finally {
     btnCreateRoom.disabled = false;
   }
@@ -834,18 +1139,17 @@ async function handleCreateRoom() {
 async function handleJoinRoom() {
   const name = inputPlayerName.value.trim();
   if (!name) {
-    showStatus("Please enter a display name.", true);
+    showToast("Please enter a display name.", true);
     return;
   }
 
   const code = inputRoomCode.value.trim().toUpperCase();
   if (!code || code.length < 4) {
-    showStatus("Please enter a valid 4-character room code.", true);
+    showToast("Please enter a valid 4-character room code.", true);
     return;
   }
 
   btnJoinRoom.disabled = true;
-  clearStatus();
 
   try {
     const playerId = getOrCreatePlayerId();
@@ -867,19 +1171,15 @@ async function handleJoinRoom() {
       playerName: name,
       roomId: data.roomId,
       playerRole: data.playerRole,
+      cachedChaosEvents: [],
     };
     saveSession();
     enterGameMode(true);
   } catch (error) {
-    showStatus(error.message, true);
+    showToast(error.message, true);
   } finally {
     btnJoinRoom.disabled = false;
   }
-}
-
-function handlePlayLocal() {
-  clearSession();
-  enterGameMode(false);
 }
 
 async function handleLeaveRoom() {
@@ -908,6 +1208,7 @@ async function handleLeaveRoom() {
     }
   }
 
+  showToast("Room ended.", "info");
   resetAndReturnToLobby();
 }
 
@@ -918,27 +1219,39 @@ function resetAndReturnToLobby() {
   dialogueInput.disabled = false;
   btnAddLine.disabled = false;
   btnClaim.disabled = false;
+  btnEndManual.disabled = false;
   btnChaos.disabled = false;
   btnGenerate.disabled = false;
   btnGenerate.textContent = "Enter the Scene";
+  btnClaim.textContent = "Check Ending";
   btnLeaveRoom.disabled = false;
 
   lastKnownSceneText = "";
   lastKnownDialogueLength = 0;
   lastSeenChaosId = null;
+  playerNames = { A: null, B: null };
+  roomInfoSceneRoleItem.classList.add("hidden");
+  roomInfoSceneRole.textContent = "";
+  roleChooser.classList.add("hidden");
+  roleChooserOptions.innerHTML = "";
+  roleAssignmentGroup.classList.add("hidden");
 
   clearSession();
   dialogueLines = [];
   localChaosEvents = [];
   chaosList.innerHTML = "";
+  roomState.cachedChaosEvents = [];
+  chaosAvailability.textContent = "";
   currentScene = "";
   currentSharedGoal = "";
   currentSpeakingConstraint = "";
+  currentTriggerDefinition = "";
   currentSelections = null;
   claimedBy = new Set();
   sceneCard.classList.add("hidden");
   sceneCompleteBanner.classList.add("hidden");
   chaosDisplay.classList.add("hidden");
+  sceneTriggerBlock.classList.add("hidden");
   renderDialogueLog();
   enterLobbyMode();
 }
@@ -966,7 +1279,8 @@ async function pollRoomState() {
 
     if (!res.ok) {
       if (res.status === 404) {
-        // Room is gone (server restart or expired) — clear stale session and go back to lobby
+        stopPolling();
+        showToast("Room no longer exists.", true);
         resetAndReturnToLobby();
       }
       return;
@@ -980,20 +1294,34 @@ async function pollRoomState() {
 }
 
 function updateFromRoomState(room) {
+  // --- Sync player display names from room ---
+  if (room.players) {
+    if (room.players.A?.name) playerNames.A = room.players.A.name;
+    if (room.players.B?.name) playerNames.B = room.players.B.name;
+  }
+
+  // --- Sync scene role assignment ---
+  if (room.sceneRoles?.A && !room.roleAssignmentPending) {
+    applySceneRoles(room.sceneRoles);
+    roleChooser.classList.add("hidden");
+  }
+
   // --- Status change ---
   if (room.status !== lastKnownRoomStatus) {
     lastKnownRoomStatus = room.status;
 
     if (room.status === "waiting") {
-      showStatus("Waiting for another player… Share code: " + room.roomId);
+      showRoomStatus("Waiting for another player… Share code: " + room.roomId);
     } else if (room.status === "ready") {
       if (roomState.playerRole === "A") {
-        showStatus("Both players are here. You can start the scene.");
+        showRoomStatus("Both players are here. You can start the scene.");
       } else {
-        showStatus("Waiting for the host to start the scene.");
+        showRoomStatus("Waiting for the host to start the scene.");
       }
     } else if (room.status === "playing") {
-      clearStatus();
+      showRoomStatus("");
+    } else if (room.status === "complete") {
+      showSceneEndedBanner("Scene complete: " + (room.completionReason || "The objective was achieved."));
     } else if (room.status === "ended") {
       showRoomEndedState();
     }
@@ -1010,18 +1338,27 @@ function updateFromRoomState(room) {
     syncDialogueFromRoom(room);
   }
 
-  // --- Chaos sync: rebuild list and play sound only when a new event arrives ---
+  // --- Chaos sync: rebuild list when new events arrive; clear if room reset to empty ---
   if (room.chaosEvents && room.chaosEvents.length > 0) {
     const latest = room.chaosEvents[room.chaosEvents.length - 1];
     if (latest.id !== lastSeenChaosId) {
       lastSeenChaosId = latest.id;
       renderChaosFromRoom(room.chaosEvents, true);
+      updateChaosButtonState(room);
     }
+  } else if (!chaosDisplay.classList.contains("hidden")) {
+    // Room has no chaos events (new scene generated) but display is still visible — clear it
+    lastSeenChaosId = null;
+    roomState.cachedChaosEvents = [];
+    chaosList.innerHTML = "";
+    chaosDisplay.classList.add("hidden");
+    chaosAvailability.textContent = "";
   }
 
-  // --- Turn control: keep input state in sync every poll while playing ---
+  // --- Turn control + chaos availability: keep controls in sync every poll while playing ---
   if (room.status === "playing" && roomState.playerRole) {
     updateTurnControls(room.currentTurn);
+    updateChaosButtonState(room);
   }
 }
 
@@ -1032,6 +1369,7 @@ function applyRoomScene(room) {
   currentScene = room.sceneText;
   currentSharedGoal = room.sharedGoal;
   currentSpeakingConstraint = room.speakingConstraint;
+  currentTriggerDefinition = room.triggerDefinition || "";
   currentSelections = room.world
     ? { world: room.world, relationship: room.relationship, scene: room.scene }
     : null;
@@ -1040,6 +1378,7 @@ function applyRoomScene(room) {
 
   sceneGoalBlock.classList.add("hidden");
   sceneConstraintBlock.classList.add("hidden");
+  sceneTriggerBlock.classList.add("hidden");
   claimedBy = new Set();
   sceneCompleteBanner.classList.add("hidden");
 
@@ -1049,7 +1388,12 @@ function applyRoomScene(room) {
     sceneGoalBlock.classList.remove("hidden");
     typewriteText(sceneGoalText, room.sharedGoal, 15, () => {
       sceneConstraintBlock.classList.remove("hidden");
-      typewriteText(sceneConstraintText, room.speakingConstraint, 15);
+      typewriteText(sceneConstraintText, room.speakingConstraint, 15, () => {
+        if (currentTriggerDefinition) {
+          sceneTriggerBlock.classList.remove("hidden");
+          typewriteText(sceneTriggerText, currentTriggerDefinition, 15);
+        }
+      });
     });
   });
 
@@ -1058,21 +1402,36 @@ function applyRoomScene(room) {
   chaosList.innerHTML = "";
   chaosDisplay.classList.add("hidden");
   lastKnownDialogueLength = 0;
-  lastSeenChaosId = null;
+  // On reconnect, room.chaosEvents may already have events. Silently acknowledge them
+  // so the next poll doesn't replay the sound. On a fresh generation chaosEvents is [],
+  // so this resets to null and the next real chaos event will play correctly.
+  lastSeenChaosId = (room.chaosEvents?.length > 0)
+    ? room.chaosEvents[room.chaosEvents.length - 1].id
+    : null;
+  roomState.cachedChaosEvents = [];
+  chaosAvailability.textContent = "";
   renderDialogueLog();
 }
 
 function showRoomEndedState() {
   stopPolling();
+  lastKnownRoomStatus = "ended";
 
-  // Disable all gameplay controls so nothing can be submitted
+  // Clear transient UI so nothing misleading remains visible
+  showRoomStatus("");
+  speakerIndicator.textContent = "";
+  chaosAvailability.textContent = "";
+
+  // Disable all gameplay controls — transcript stays visible underneath the modal
   dialogueInput.disabled = true;
   btnAddLine.disabled = true;
   btnClaim.disabled = true;
+  btnEndManual.disabled = true;
   btnChaos.disabled = true;
   btnGenerate.disabled = true;
-  btnLeaveRoom.disabled = true;
 
+  roomEndedModal.querySelector(".modal-eyebrow").textContent = "ROOM ENDED";
+  roomEndedModal.querySelector(".modal-heading").textContent = "This room has ended.";
   roomEndedModal.classList.remove("hidden");
 }
 
